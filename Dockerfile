@@ -25,10 +25,11 @@ LABEL description="Minimal Postfix SMTP relay with optional TLS and SASL auth su
 RUN apk add --no-cache \
 #	cyrus-sasl-auxprop \ 
 	lmdb-tools \
-	strace \
+        strace \
         postfix \
         cyrus-sasl \
         cyrus-sasl-login \
+        cyrus-sasl-utils \
         openssl \
         bash
 

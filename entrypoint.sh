@@ -76,15 +76,16 @@ maybe_setup_sasl() {
   fi
   update_postconf smtpd_sasl_auth_enable yes
   update_postconf smtpd_sasl_type cyrus
-  update_postconf smtpd_sasl_path smtpd
+  update_postconf smtpd_sasl_path saslauthd
   update_postconf smtpd_sasl_local_domain "$RELAY_DOMAIN"
   update_postconf smtpd_sasl_security_options noanonymous
   update_postconf smtpd_tls_auth_only no
   cat > /etc/sasl2/smtpd.conf <<EOF
-pwcheck_method: auxprop
-auxprop_plugin: sasldb
+pwcheck_method: saslauthd
 mech_list: PLAIN LOGIN CRAM-MD5 DIGEST-MD5
-sasldb_path: /etc/sasl2/sasldb2.mdb # LMDB database
+
+#sasldb_path: /etc/sasl2/sasldb2.mdb # LMDB database#
+
 EOF
 }
 
@@ -105,6 +106,14 @@ maybe_setup_relayhost_auth() {
     update_postconf smtp_sasl_security_options noanonymous
     update_postconf smtp_sasl_tls_security_options noanonymous
   fi
+}
+
+# ─── Start saslauthd if SASL enabled ───
+start_saslauthd() {
+  if [[ "${ENABLE_SASL,,}" != "true" ]]; then return; fi
+  mkdir -p /run/saslauthd
+  ln -sf /etc/sasl2/sasldb2.mdb /etc/sasldb2
+  saslauthd -a sasldb -m /run/saslauthd
 }
 
 # ─── Apply base Postfix configuration ───
@@ -140,6 +149,7 @@ main() {
   apply_base_configuration
   maybe_setup_sasl
   maybe_setup_relayhost_auth
+  start_saslauthd
   postfix check
   echo "[INFO] Starting Postfix in foreground…"
   exec postfix start-fg
