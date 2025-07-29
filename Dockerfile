@@ -11,10 +11,9 @@
 # modules for authentication, and OpenSSL for certificate generation.
 FROM alpine:3.20
 
-# ─── Edge-Repos für fix für gdbm_errno=3 (Cyrus-SASL ≥2.1.27-r12) ───
-RUN echo "https://dl-cdn.alpinelinux.org/alpine/edge/main"      >> /etc/apk/repositories && \
-    echo "https://dl-cdn.alpinelinux.org/alpine/edge/community" >> /etc/apk/repositories && \
-    apk update
+
+# Use the standard repositories; SASL stores credentials in an LMDB database
+# to avoid gdbm-related issues on Alpine.
 
 # Metadata
 LABEL maintainer="Postfix Relay Maintainer <maintainer@example.com>"
@@ -26,10 +25,11 @@ LABEL description="Minimal Postfix SMTP relay with optional TLS and SASL auth su
 RUN apk add --no-cache \
 #	cyrus-sasl-auxprop \ 
 	lmdb-tools \
-	strace \
+        strace \
         postfix \
         cyrus-sasl \
         cyrus-sasl-login \
+        cyrus-sasl-utils \
         openssl \
         bash
 
