@@ -19,6 +19,26 @@ TLS_CA=${TLS_CA:-"/etc/ssl/certs/ca-certificates.crt"}
 ENABLE_SASL=${ENABLE_SASL:-"false"}
 SMTP_USERNAME=${SMTP_USERNAME:-""}
 SMTP_PASSWORD=${SMTP_PASSWORD:-""}
+# Allow overriding of Dovecot authentication mechanisms.  By default we
+# advertise only the PLAIN and LOGIN mechanisms, which are universally
+# supported and work with passwords stored in plain text.  The
+# previous implementation always advertised CRAM‑MD5 and DIGEST‑MD5 as
+# well, which caused authentication errors when using plain‑text
+# passwords【763605965413718†L197-L227】.  Administrators can override this
+# setting via AUTH_MECHANISMS in the environment if they need to
+# explicitly enable additional mechanisms.  For example:
+#   AUTH_MECHANISMS="plain login cram‑md5"
+# Note that non‑plaintext mechanisms require that the password be
+# stored either in plain text or using the mechanism's own scheme.
+AUTH_MECHANISMS=${AUTH_MECHANISMS:-"plain login"}
+
+# Support specifying multiple SMTP users via a single environment
+# variable.  Set SMTP_USERS to a comma‑separated list of
+# "username:password" pairs.  When provided this takes precedence over
+# SMTP_USERNAME/SMTP_PASSWORD and allows creating multiple relay
+# accounts without rebuilding the image.  Example:
+#   SMTP_USERS="user1:secret1,user2:secret2"
+SMTP_USERS=${SMTP_USERS:-""}
 MESSAGE_SIZE_LIMIT=${MESSAGE_SIZE_LIMIT:-10485760}
 POSTFIX_MAIN_CF="/etc/postfix/main.cf"
 
@@ -66,9 +86,12 @@ maybe_setup_sasl() {
   update_postconf smtpd_sasl_security_options noanonymous
   update_postconf smtpd_tls_auth_only no
   mkdir -p /etc/dovecot
-  cat > /etc/dovecot/dovecot.conf <<'EOF'
+  # Write a minimal Dovecot configuration for SASL auth.  We expand
+  # AUTH_MECHANISMS here to allow administrators to control which
+  # mechanisms are advertised.  See AUTH_MECHANISMS above for details.
+  cat > /etc/dovecot/dovecot.conf <<EOF
 disable_plaintext_auth = no
-auth_mechanisms = plain login cram-md5 digest-md5
+auth_mechanisms = ${AUTH_MECHANISMS}
 passdb {
   driver = passwd-file
   args = /etc/dovecot/users
@@ -86,12 +109,30 @@ service auth {
 }
 
 EOF
-  if [[ -n "$SMTP_USERNAME" && -n "$SMTP_PASSWORD" ]]; then
-    echo "$SMTP_USERNAME:{PLAIN}$SMTP_PASSWORD" > /etc/dovecot/users
+
+  # Build the user database.  Prefer SMTP_USERS for multiple
+  # accounts; fall back to single SMTP_USERNAME/SMTP_PASSWORD.  Each
+  # entry is stored with the {PLAIN} scheme so Dovecot can derive
+  # responses for non‑plaintext mechanisms【763605965413718†L197-L227】.  If no
+  # credentials are provided the relay will still start, but
+  # authentication attempts will fail.
+  : > /etc/dovecot/users  # truncate or create file
+  if [[ -n "$SMTP_USERS" ]]; then
+    IFS=',' read -ra _user_arr <<< "$SMTP_USERS"
+    for _entry in "${_user_arr[@]}"; do
+      IFS=':' read -r _user _pass <<< "$_entry"
+      if [[ -n "$_user" && -n "$_pass" ]]; then
+        echo "${_user}:{PLAIN}${_pass}" >> /etc/dovecot/users
+      fi
+    done
+  elif [[ -n "$SMTP_USERNAME" && -n "$SMTP_PASSWORD" ]]; then
+    echo "$SMTP_USERNAME:{PLAIN}$SMTP_PASSWORD" >> /etc/dovecot/users
+  fi
+  if [[ -s /etc/dovecot/users ]]; then
     chown root:root /etc/dovecot/users
     chmod 600 /etc/dovecot/users
   else
-    echo "[WARN] SASL enabled but SMTP_USERNAME/SMTP_PASSWORD not provided; clients will be unable to authenticate"
+    echo "[WARN] SASL enabled but no SMTP_USERS or SMTP_USERNAME/SMTP_PASSWORD provided; clients will be unable to authenticate"
   fi
 }
 

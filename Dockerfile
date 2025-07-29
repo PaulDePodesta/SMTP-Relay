@@ -22,8 +22,7 @@ LABEL description="Minimal Postfix SMTP relay with optional TLS and SASL auth su
 # openssl so that the container can generate self‑signed certificates
 # when no TLS materials are provided via environment variables.
 RUN apk add --no-cache \
-      	lmdb-tools \
-        strace \
+       lmdb-tools \
         postfix \
         dovecot \
         openssl \
