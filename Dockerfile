@@ -24,6 +24,7 @@ LABEL description="Minimal Postfix SMTP relay with optional TLS and SASL auth su
 # when no TLS materials are provided via environment variables.
 RUN apk add --no-cache \
 #	cyrus-sasl-auxprop \ 
+    	cyrus-sasl-saslauthd \
 	lmdb-tools \
         strace \
         postfix \
