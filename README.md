@@ -13,6 +13,7 @@ downstream receivers that distrust dynamic address space.
 * **Lightweight:** built on Alpine Linux with Postfix and Cyrus
   SASL via `saslauthd` using an LMDB backend. The resulting image
   is under 100 MB.
+
 * **Runtime configuration:** environment variables control all
   essential parameters.  You never edit `main.cf` or `master.cf`
   directly; the entrypoint script rewrites settings using
@@ -89,15 +90,15 @@ Upon start the container runs `entrypoint.sh`.  This script:
    `/etc/sasldb2` using the LMDB format and persist across restarts
    thanks to the `sasl-db` volume.  Authentication is handled by the
    `saslauthd` daemon rather than direct library access.
+
 5. Optionally creates a `sasl_passwd.db` map (stored as LMDB) for
    authenticating to an upstream smarthost if `RELAYHOST`,
    `RELAYHOST_USERNAME` and `RELAYHOST_PASSWORD` are set.  Postfix
    uses this map via `smtp_sasl_password_maps`.
+
 6. When SASL is enabled the entrypoint launches the `saslauthd`
    daemon so Postfix can verify credentials.
 7. Finally executes `postfix start-fg`, which keeps Postfix in the
-   foreground as PID 1.  Support for foreground operation was
-   introduced in Postfix 3.3【219023648407850†L19-L25】.
 
 For further tuning consult the [Postfix documentation](https://www.postfix.org/documentation.html).
 

@@ -83,6 +83,9 @@ maybe_setup_sasl() {
   cat > /etc/sasl2/smtpd.conf <<EOF
 pwcheck_method: saslauthd
 mech_list: PLAIN LOGIN CRAM-MD5 DIGEST-MD5
+
+#sasldb_path: /etc/sasl2/sasldb2.mdb # LMDB database#
+
 EOF
 }
 
