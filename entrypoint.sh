@@ -158,7 +158,6 @@ main() {
   maybe_setup_relayhost_auth
 
   start_dovecot
-=======
 
   postfix check
   echo "[INFO] Starting Postfix in foreground…"
