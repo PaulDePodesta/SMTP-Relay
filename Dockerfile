@@ -1,42 +1,36 @@
 # A lightweight SMTP relay built on Alpine Linux.
 #
-# This image installs Postfix and Cyrus SASL on top of a minimal Alpine
+# This image installs Postfix and Dovecot on top of a minimal Alpine
 # base image.  Configuration is handled at run time via environment
 # variables so that the same image can be used in different
 # deployments without rebuilding.  See the accompanying `entrypoint.sh`
 # for details of how variables are interpreted.
 #
 # To reduce the size of the image we install only the packages that
-# are required for an SMTP relay: postfix itself, a few Cyrus SASL
-# modules for authentication, and OpenSSL for certificate generation.
+# are required for an SMTP relay: postfix itself, Dovecot for SASL authentication, and OpenSSL for certificate generation.
 FROM alpine:3.20
 
-# ─── Edge-Repos für fix für gdbm_errno=3 (Cyrus-SASL ≥2.1.27-r12) ───
-RUN echo "https://dl-cdn.alpinelinux.org/alpine/edge/main"      >> /etc/apk/repositories && \
-    echo "https://dl-cdn.alpinelinux.org/alpine/edge/community" >> /etc/apk/repositories && \
-    apk update
+# Use the standard repositories. LMDB is available for Postfix maps and Dovecot handles SASL authentication.
 
 # Metadata
 LABEL maintainer="Postfix Relay Maintainer <maintainer@example.com>"
 LABEL description="Minimal Postfix SMTP relay with optional TLS and SASL auth support"
 
-# Install postfix and SASL packages.  We also install
+# Install postfix and Dovecot packages.  We also install
 # openssl so that the container can generate self‑signed certificates
 # when no TLS materials are provided via environment variables.
 RUN apk add --no-cache \
-#	cyrus-sasl-auxprop \ 
 	lmdb-tools \
-	strace \
+        strace \
         postfix \
-        cyrus-sasl \
-        cyrus-sasl-login \
+        dovecot \
         openssl \
         bash
 
-# Prepare directories for certificates and SASL database.  The
+# Prepare directories for certificates and Dovecot configuration.  The
 # directories under /etc/postfix will be used by the entrypoint
 # script to store generated TLS keys and certificates on first run.
-RUN mkdir -p /etc/postfix/certs /etc/sasl2
+RUN mkdir -p /etc/postfix/certs /etc/dovecot
 
 # Copy entrypoint script into the image.  The script will be
 # responsible for generating configuration files based on the

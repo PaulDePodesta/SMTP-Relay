@@ -31,21 +31,6 @@ sed -ri '
 touch /etc/postfix/aliases
 newaliases
 
-# ─── Recreate SASL DB if needed ───
-if [[ "${ENABLE_SASL,,}" == "true" && -n "$SMTP_USERNAME" && -n "$SMTP_PASSWORD" ]]; then
-  rm -f /etc/sasl2/sasldb2.mdb
-  echo "[INFO] Re-creating SASL user database at /etc/sasl2/sasldb2.mdb"
-  echo "$SMTP_PASSWORD" \
-  | saslpasswd2 -c -p -f /etc/sasl2/sasldb2.mdb -u "$RELAY_DOMAIN" "$SMTP_USERNAME"
-  #echo "$SMTP_PASSWORD" \
-  #  | saslpasswd2 -c -p -f /etc/sasl2/sasldb2.mdb -u "$RELAY_DOMAIN" "$SMTP_USERNAME"
-  chown postfix:postfix /etc/sasl2/sasldb2.mdb
-  chmod 600 /etc/sasl2/sasldb2.mdb
-
-  echo "[DEBUG] SASL DB file details: $(ls -lh /etc/sasl2/sasldb2.mdb)"
-  echo "[DEBUG] SASL users:"
-  sasldblistusers2 -f /etc/sasl2/sasldb2.mdb || echo "[DEBUG] Failed to list users"
-fi
 
 # ─── Helper: update postconf only if changed ───
 update_postconf() {
@@ -75,17 +60,38 @@ maybe_setup_sasl() {
     return
   fi
   update_postconf smtpd_sasl_auth_enable yes
-  update_postconf smtpd_sasl_type cyrus
-  update_postconf smtpd_sasl_path smtpd
+  update_postconf smtpd_sasl_type dovecot
+  update_postconf smtpd_sasl_path private/auth
   update_postconf smtpd_sasl_local_domain "$RELAY_DOMAIN"
   update_postconf smtpd_sasl_security_options noanonymous
   update_postconf smtpd_tls_auth_only no
-  cat > /etc/sasl2/smtpd.conf <<EOF
-pwcheck_method: auxprop
-auxprop_plugin: sasldb
-mech_list: PLAIN LOGIN CRAM-MD5 DIGEST-MD5
-sasldb_path: /etc/sasl2/sasldb2.mdb #/etc/sasl2/sasldb2
+  mkdir -p /etc/dovecot
+  cat > /etc/dovecot/dovecot.conf <<'EOF'
+disable_plaintext_auth = no
+auth_mechanisms = plain login cram-md5 digest-md5
+passdb {
+  driver = passwd-file
+  args = /etc/dovecot/users
+}
+userdb {
+  driver = static
+  args = uid=postfix gid=postfix home=/var/empty
+}
+service auth {
+  unix_listener /var/spool/postfix/private/auth {
+    mode = 0660
+    user = postfix
+    group = postfix
+  }
+}
 EOF
+  if [[ -n "$SMTP_USERNAME" && -n "$SMTP_PASSWORD" ]]; then
+    echo "$SMTP_USERNAME:{PLAIN}$SMTP_PASSWORD" > /etc/dovecot/users
+    chown root:root /etc/dovecot/users
+    chmod 600 /etc/dovecot/users
+  else
+    echo "[WARN] SASL enabled but SMTP_USERNAME/SMTP_PASSWORD not provided; clients will be unable to authenticate"
+  fi
 }
 
 # ─── Configure relayhost auth if provided ───
@@ -97,13 +103,21 @@ maybe_setup_relayhost_auth() {
   update_postconf relayhost "$RELAYHOST"
   if [[ -n "$RELAYHOST_USERNAME" && -n "$RELAYHOST_PASSWORD" ]]; then
     echo "$RELAYHOST $RELAYHOST_USERNAME:$RELAYHOST_PASSWORD" > /etc/postfix/sasl_passwd
-    postmap hash:/etc/postfix/sasl_passwd
+    # Explicitly build the map using LMDB to avoid the gdbm backend
+    postmap lmdb:/etc/postfix/sasl_passwd
     rm -f /etc/postfix/sasl_passwd
     update_postconf smtp_sasl_auth_enable yes
-    update_postconf smtp_sasl_password_maps hash:/etc/postfix/sasl_passwd.db
+    update_postconf smtp_sasl_password_maps lmdb:/etc/postfix/sasl_passwd.db
     update_postconf smtp_sasl_security_options noanonymous
     update_postconf smtp_sasl_tls_security_options noanonymous
   fi
+}
+
+# ─── Start Dovecot if SASL enabled ───
+start_dovecot() {
+  if [[ "${ENABLE_SASL,,}" != "true" ]]; then return; fi
+  echo "[INFO] Starting Dovecot for SASL authentication"
+  dovecot
 }
 
 # ─── Apply base Postfix configuration ───
@@ -139,6 +153,7 @@ main() {
   apply_base_configuration
   maybe_setup_sasl
   maybe_setup_relayhost_auth
+  start_dovecot
   postfix check
   echo "[INFO] Starting Postfix in foreground…"
   exec postfix start-fg
