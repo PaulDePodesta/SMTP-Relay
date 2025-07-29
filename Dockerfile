@@ -29,7 +29,6 @@ RUN apk add --no-cache \
         postfix \
         cyrus-sasl \
         cyrus-sasl-login \
-        cyrus-sasl-utils \
         openssl \
         bash
 
