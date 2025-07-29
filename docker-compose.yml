@@ -1,0 +1,41 @@
+version: "3.8"
+
+# Docker Compose file for the Postfix SMTP relay.  Values for most
+# configuration settings are pulled from the accompanying .env file.
+# Using a compose file makes it easy to deploy the relay on a VPS
+# with a static IP: once DNS (including reverse DNS) points at the
+# VPS you simply run `docker compose up -d` to start relaying mail
+# from your dynamic environment.
+
+services:
+  relay:
+    build: .
+    container_name: smtp-relay
+    restart: unless-stopped
+    # Expose the listening port from the container.  You can map
+    # additional host ports here if needed, for example 587 for
+    # submission.  The default listens on port 25.
+    ports:
+      - "${SMTP_PORT:-25}:25"
+    # Pass configuration via environment variables.  Compose will
+    # automatically read the .env file in the same directory.
+    env_file:
+      - .env
+    # Persist certificates and SASL databases across container
+    # restarts.  Without these volumes the container will generate
+    # a new self‑signed certificate and credentials each time it
+    # starts.  The `sasl-db` volume stores /etc/sasldb2, while
+    # `certs` stores generated TLS materials.
+    volumes:
+      - certs:/etc/postfix/certs
+      # Persist SASL database on the host.  This file stores the
+      # credentials created when SASL is enabled.  Mount it as a
+      # single file so that it survives container recreation without
+      # overwriting the rest of /etc.
+      - sasl-db:/etc/sasldb2
+    # To log via syslog on the host you may mount /dev/log:
+    # - "/dev/log:/dev/log"
+
+volumes:
+  certs:
+  sasl-db:
