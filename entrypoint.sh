@@ -84,7 +84,7 @@ maybe_setup_sasl() {
 pwcheck_method: auxprop
 auxprop_plugin: sasldb
 mech_list: PLAIN LOGIN CRAM-MD5 DIGEST-MD5
-sasldb_path: /etc/sasl2/sasldb2.mdb #/etc/sasl2/sasldb2
+sasldb_path: /etc/sasl2/sasldb2.mdb # LMDB database
 EOF
 }
 
@@ -97,10 +97,11 @@ maybe_setup_relayhost_auth() {
   update_postconf relayhost "$RELAYHOST"
   if [[ -n "$RELAYHOST_USERNAME" && -n "$RELAYHOST_PASSWORD" ]]; then
     echo "$RELAYHOST $RELAYHOST_USERNAME:$RELAYHOST_PASSWORD" > /etc/postfix/sasl_passwd
-    postmap hash:/etc/postfix/sasl_passwd
+    # Explicitly build the map using LMDB to avoid the gdbm backend
+    postmap lmdb:/etc/postfix/sasl_passwd
     rm -f /etc/postfix/sasl_passwd
     update_postconf smtp_sasl_auth_enable yes
-    update_postconf smtp_sasl_password_maps hash:/etc/postfix/sasl_passwd.db
+    update_postconf smtp_sasl_password_maps lmdb:/etc/postfix/sasl_passwd.db
     update_postconf smtp_sasl_security_options noanonymous
     update_postconf smtp_sasl_tls_security_options noanonymous
   fi
