@@ -76,7 +76,7 @@ maybe_setup_sasl() {
   fi
   update_postconf smtpd_sasl_auth_enable yes
   update_postconf smtpd_sasl_type cyrus
-  update_postconf smtpd_sasl_path saslauthd
+  update_postconf smtpd_sasl_path /run/saslauthd/mux
   update_postconf smtpd_sasl_local_domain "$RELAY_DOMAIN"
   update_postconf smtpd_sasl_security_options noanonymous
   update_postconf smtpd_tls_auth_only no
