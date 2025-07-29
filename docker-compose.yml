@@ -1,5 +1,3 @@
-version: "3.8"
-
 # Docker Compose file for the Postfix SMTP relay.  Values for most
 # configuration settings are pulled from the accompanying .env file.
 # Using a compose file makes it easy to deploy the relay on a VPS
@@ -32,7 +30,7 @@ services:
       # credentials created when SASL is enabled.  Mount it as a
       # single file so that it survives container recreation without
       # overwriting the rest of /etc.
-      - sasl-db:/etc/sasldb2
+      - sasl-db:/etc/sasl2
     # To log via syslog on the host you may mount /dev/log:
     # - "/dev/log:/dev/log"
 

@@ -11,6 +11,11 @@
 # modules for authentication, and OpenSSL for certificate generation.
 FROM alpine:3.20
 
+# ─── Edge-Repos für fix für gdbm_errno=3 (Cyrus-SASL ≥2.1.27-r12) ───
+RUN echo "https://dl-cdn.alpinelinux.org/alpine/edge/main"      >> /etc/apk/repositories && \
+    echo "https://dl-cdn.alpinelinux.org/alpine/edge/community" >> /etc/apk/repositories && \
+    apk update
+
 # Metadata
 LABEL maintainer="Postfix Relay Maintainer <maintainer@example.com>"
 LABEL description="Minimal Postfix SMTP relay with optional TLS and SASL auth support"
@@ -19,10 +24,12 @@ LABEL description="Minimal Postfix SMTP relay with optional TLS and SASL auth su
 # openssl so that the container can generate self‑signed certificates
 # when no TLS materials are provided via environment variables.
 RUN apk add --no-cache \
+#	cyrus-sasl-auxprop \ 
+	lmdb-tools \
+	strace \
         postfix \
         cyrus-sasl \
         cyrus-sasl-login \
-        cyrus-sasl-plain \
         openssl \
         bash
 
@@ -53,3 +60,4 @@ ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 # this command when appropriate.  Keeping CMD separate allows the
 # user to override the command at runtime if they need to debug.
 CMD ["postfix", "start-fg"]
+
