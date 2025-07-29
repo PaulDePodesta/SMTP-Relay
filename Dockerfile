@@ -10,7 +10,9 @@
 # are required for an SMTP relay: postfix itself, Dovecot for SASL authentication, and OpenSSL for certificate generation.
 FROM alpine:3.20
 
+
 # Use the standard repositories. LMDB is available for Postfix maps and Dovecot handles SASL authentication.
+
 
 # Metadata
 LABEL maintainer="Postfix Relay Maintainer <maintainer@example.com>"
@@ -20,7 +22,7 @@ LABEL description="Minimal Postfix SMTP relay with optional TLS and SASL auth su
 # openssl so that the container can generate self‑signed certificates
 # when no TLS materials are provided via environment variables.
 RUN apk add --no-cache \
-	lmdb-tools \
+      	lmdb-tools \
         strace \
         postfix \
         dovecot \

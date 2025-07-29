@@ -84,6 +84,7 @@ service auth {
     group = postfix
   }
 }
+
 EOF
   if [[ -n "$SMTP_USERNAME" && -n "$SMTP_PASSWORD" ]]; then
     echo "$SMTP_USERNAME:{PLAIN}$SMTP_PASSWORD" > /etc/dovecot/users
@@ -113,11 +114,13 @@ maybe_setup_relayhost_auth() {
   fi
 }
 
+
 # ─── Start Dovecot if SASL enabled ───
 start_dovecot() {
   if [[ "${ENABLE_SASL,,}" != "true" ]]; then return; fi
   echo "[INFO] Starting Dovecot for SASL authentication"
   dovecot
+
 }
 
 # ─── Apply base Postfix configuration ───
@@ -153,7 +156,10 @@ main() {
   apply_base_configuration
   maybe_setup_sasl
   maybe_setup_relayhost_auth
+
   start_dovecot
+=======
+
   postfix check
   echo "[INFO] Starting Postfix in foreground…"
   exec postfix start-fg
