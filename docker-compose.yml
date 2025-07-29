@@ -19,18 +19,18 @@ services:
     # automatically read the .env file in the same directory.
     env_file:
       - .env
-    # Persist certificates and SASL databases across container
+    # Persist certificates and Dovecot state across container
     # restarts.  Without these volumes the container will generate
     # a new self‑signed certificate and credentials each time it
-    # starts.  The `sasl-db` volume stores /etc/sasldb2, while
+    # starts.  The `sasl-db` volume stores /etc/dovecot, while
     # `certs` stores generated TLS materials.
     volumes:
       - certs:/etc/postfix/certs
-      # Persist SASL database on the host.  This file stores the
+      # Persist Dovecot user database on the host.  This file stores the
       # credentials created when SASL is enabled.  Mount it as a
       # single file so that it survives container recreation without
       # overwriting the rest of /etc.
-      - sasl-db:/etc/sasl2
+      - sasl-db:/etc/dovecot
     # To log via syslog on the host you may mount /dev/log:
     # - "/dev/log:/dev/log"
 

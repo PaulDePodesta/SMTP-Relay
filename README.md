@@ -10,9 +10,9 @@ downstream receivers that distrust dynamic address space.
 
 ## Features
 
-* **Lightweight:** built on Alpine Linux with Postfix and Cyrus
-  SASL via `saslauthd` using an LMDB backend. The resulting image
-  is under 100 MB.
+
+* **Lightweight:** built on Alpine Linux with Postfix and Dovecot for
+  SASL authentication. The resulting image is under 100 MB.
 
 * **Runtime configuration:** environment variables control all
   essential parameters.  You never edit `main.cf` or `master.cf`
@@ -24,8 +24,10 @@ downstream receivers that distrust dynamic address space.
   via a volume.
 * **Optional client authentication:** enable SASL by toggling
   `ENABLE_SASL=true` and specifying a client `SMTP_USERNAME` and
-  `SMTP_PASSWORD`. Authentication is provided by the `saslauthd`
-  daemon. Only authenticated users and hosts listed in
+
+  `SMTP_PASSWORD`. Authentication is provided by the Dovecot
+  SASL service. Only authenticated users and hosts listed in
+
   `ALLOWED_NETWORKS` may relay mail.
 * **Smarthost support:** optionally forward all outbound mail to an
   upstream SMTP server (e.g. your ISP) with support for SMTP AUTH.
@@ -85,20 +87,23 @@ Upon start the container runs `entrypoint.sh`.  This script:
    `myhostname`, `mydomain`, `mynetworks` and other relay
    essentials.  It also configures `maillog_file` to
    `/dev/stdout`, so that Postfix logs to standard output【819524448154663†L49-L64】.
-4. Creates a Cyrus SASL database when `ENABLE_SASL=true` and the
+4. Creates a Dovecot password file when `ENABLE_SASL=true` and the
    user and password are provided.  The credentials are stored in
-   `/etc/sasldb2` using the LMDB format and persist across restarts
-   thanks to the `sasl-db` volume.  Authentication is handled by the
-   `saslauthd` daemon rather than direct library access.
+
+   `/etc/dovecot/users` and persist across restarts thanks to the
+   `sasl-db` volume.
 
 5. Optionally creates a `sasl_passwd.db` map (stored as LMDB) for
    authenticating to an upstream smarthost if `RELAYHOST`,
    `RELAYHOST_USERNAME` and `RELAYHOST_PASSWORD` are set.  Postfix
    uses this map via `smtp_sasl_password_maps`.
 
-6. When SASL is enabled the entrypoint launches the `saslauthd`
-   daemon so Postfix can verify credentials.
+6. When SASL is enabled the entrypoint launches the Dovecot daemon
+   so Postfix can verify credentials.
 7. Finally executes `postfix start-fg`, which keeps Postfix in the
+   foreground as PID 1.  Support for foreground operation was
+   introduced in Postfix 3.3【219023648407850†L19-L25】.
+
 
 For further tuning consult the [Postfix documentation](https://www.postfix.org/documentation.html).
 
