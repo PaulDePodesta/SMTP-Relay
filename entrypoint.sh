@@ -109,6 +109,8 @@ service auth {
 }
 
 EOF
+mkdir -p /var/spool/postfix/home/mailcowrelay
+chown postfix:postfix /var/spool/postfix/home/mailcowrelay
 
   # Build the user database.  Prefer SMTP_USERS for multiple
   # accounts; fall back to single SMTP_USERNAME/SMTP_PASSWORD.  Each
