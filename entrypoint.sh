@@ -98,7 +98,7 @@ passdb {
 }
 userdb {
   driver = static
-  args = uid=postfix gid=postfix home=/var/empty
+  args = uid=postfix gid=postfix home=/var/spool/postfix/home/mailcowrelay
 }
 service auth {
   unix_listener /var/spool/postfix/private/auth {
