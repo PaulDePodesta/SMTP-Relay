@@ -91,6 +91,7 @@ maybe_setup_sasl() {
   # Write a minimal Dovecot configuration for SASL auth.  We expand
   # AUTH_MECHANISMS here to allow administrators to control which
   # mechanisms are advertised.  See AUTH_MECHANISMS above for details.
+create_dovecot_config() {
 cat > /etc/dovecot/dovecot.conf << EOF
 protocols = 
 ssl = no
