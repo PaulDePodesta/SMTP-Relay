@@ -91,27 +91,36 @@ maybe_setup_sasl() {
   # Write a minimal Dovecot configuration for SASL auth.  We expand
   # AUTH_MECHANISMS here to allow administrators to control which
   # mechanisms are advertised.  See AUTH_MECHANISMS above for details.
-  cat > /etc/dovecot/dovecot.conf <<EOF
+cat > /etc/dovecot/dovecot.conf << EOF
+protocols = 
+ssl = no
 disable_plaintext_auth = no
-auth_mechanisms = ${AUTH_MECHANISMS}
+auth_mechanisms = ${AUTH_MECHANISMS:-plain login}
+
 passdb {
-  driver = passwd-file
-  args = /etc/dovecot/users
+    driver = passwd-file
+    args = scheme=PLAIN username_format=%u /etc/dovecot/users
 }
+
 userdb {
-  driver = static
-  args = uid=postfix gid=postfix home=/var/spool/postfix/home/mailcowrelay
+    driver = static
+    args = uid=100 gid=101 home=/tmp
 }
+
 service auth {
-  unix_listener /var/spool/postfix/private/auth {
-    mode = 0660
-    user = postfix
-    group = postfix
-  }
+    unix_listener /var/spool/postfix/private/auth {
+        mode = 0660
+        user = postfix
+        group = postfix
+    }
+    user = root
 }
 
+service auth-worker {
+    user = root
+}
 EOF
-
+}
 
   # Build the user database.  Prefer SMTP_USERS for multiple
   # accounts; fall back to single SMTP_USERNAME/SMTP_PASSWORD.  Each
