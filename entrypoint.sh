@@ -121,7 +121,10 @@ service auth-worker {
     user = root
 }
 EOF
+  create_dovecot_config
 }
+  create_dovecot_config
+
 
   # Build the user database.  Prefer SMTP_USERS for multiple
   # accounts; fall back to single SMTP_USERNAME/SMTP_PASSWORD.  Each
